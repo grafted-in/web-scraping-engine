@@ -1,0 +1,7 @@
+dist/
+.stack-work/
+
+package.nix
+
+data/
+.tor*

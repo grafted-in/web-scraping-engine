@@ -1,0 +1,73 @@
+name:                web-scraping-engine
+version:             0.1.0.0
+synopsis:            Web scraper engine for cached, parallel, anonymized scraping
+description:         Please see README.md
+homepage:            https://github.com/grafted-in/web-scraping-engine
+license:             BSD3
+license-file:        LICENSE
+author:              Elliot Cameron
+maintainer:          elliot@graftedin.io
+copyright:           2017 Elliot Cameron and Grafted-In, LLC
+category:            Web
+build-type:          Simple
+cabal-version:       >=1.10
+
+library
+  hs-source-dirs: src
+  exposed-modules:
+    ScrapeEngine
+    ScrapeEngine.Collect
+    ScrapeEngine.FetchUrl
+    ScrapeEngine.Main
+    ScrapeEngine.Prelude
+    ScrapeEngine.TorProxies
+  other-modules:
+    ScrapeEngine.CsvOut
+  build-depends:
+      async
+    , cassava >= 0.4.5 && < 0.5
+    , connection >= 0.2.7 && < 0.3
+    , base >= 4.7 && < 5
+    , base64-bytestring
+    , bytestring
+    , data-default == 0.7.*
+    , extra >= 1.4 && < 1.6
+    , http-client >= 0.5.5 && < 0.6
+    , http-client-tls >= 0.3.1 && < 0.4
+    , http-conduit == 2.2.*
+    , http-types == 0.9.*
+    , path == 0.5.*
+    , path-io == 1.2.*
+    , random == 1.1.*
+    , random-shuffle == 0.0.*
+    , say == 0.1.*
+    , scalpel-core == 0.5.*
+    , socks >= 0.5.5 && < 0.6
+    , stm == 2.4.*
+    , stm-containers == 0.2.*
+    , text
+    , unagi-chan == 0.4.*
+    , unordered-containers >= 0.2.7 && < 0.3
+
+    -- Main CLI processing
+    , optparse-applicative
+    , pipes >= 4.1 && <= 4.4
+    , pipes-bytestring >= 2.1.4 && < 2.2
+    , pipes-csv >= 1.4.3 && < 1.5
+    , pipes-safe == 2.2.*
+  default-language:    Haskell2010
+  default-extensions:
+    BangPatterns
+    DuplicateRecordFields
+    FlexibleContexts
+    LambdaCase
+    NamedFieldPuns
+    OverloadedStrings
+    RecordWildCards
+    RankNTypes
+    ScopedTypeVariables
+  ghc-options: -Wall
+
+source-repository head
+  type:     git
+  location: https://gitlab.com/grafted-in/grand-blanc-chamber-scraper.git
