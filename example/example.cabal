@@ -15,7 +15,7 @@ cabal-version:       >=1.10
 executable example
   hs-source-dirs:      src
   main-is:             Main.hs
-  other-modules:       ScrapingRules
+  other-modules:       ScrapingRules, ScrapingUtils
   ghc-options:         -O2 -Wall -threaded -rtsopts -with-rtsopts=-N -with-rtsopts=-T
   build-depends:
       base

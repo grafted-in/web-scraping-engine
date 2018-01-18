@@ -1,4 +1,6 @@
-{-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE ConstraintKinds           #-}
+{-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE QuasiQuotes               #-}
 
 module ScrapeEngine.Main where
 
@@ -17,7 +19,10 @@ import           ScrapeEngine.CsvOut     (writeCsv)
 import           ScrapeEngine.Prelude
 import qualified ScrapeEngine.TorProxies as SE
 
-type Scraper b r = (r -> IO ()) -> SE.DownloadReqSink b -> IO ()
+type IsScrapeRecord r = (Show r, Csv.DefaultOrdered r, Csv.ToNamedRecord r)
+type RecordInserter = forall r. IsScrapeRecord r => r -> IO ()
+
+type Scraper b = RecordInserter -> SE.DownloadReqSink b -> IO ()
 
 parseArgs :: [String] -> IO Options
 parseArgs args = O.handleParseResult $ O.execParserPure O.defaultPrefs opts args
@@ -25,8 +30,7 @@ parseArgs args = O.handleParseResult $ O.execParserPure O.defaultPrefs opts args
     opts = O.info (O.helper <*> cmdOpts) (O.fullDesc <> O.progDesc "Run scraper commands")
 
 
-mainWithArgs :: (Show r, Csv.DefaultOrdered r, Csv.ToNamedRecord r)
-             => Options -> Scraper Rel r -> (Int -> IO ()) -> IO ()
+mainWithArgs :: Options -> Scraper Rel -> (Int -> IO ()) -> IO ()
 mainWithArgs Options{_cacheDir, _optionsChoice} scraper startMonitor =
   case _optionsChoice of
     ListCacheOption -> listCache _cacheDir
@@ -55,14 +59,15 @@ mainWithArgs Options{_cacheDir, _optionsChoice} scraper startMonitor =
 
       runScraper _outputFile cfg scraper
 
+data Item = forall r. IsScrapeRecord r => Item r
 
-runScraper :: (Show r, Csv.DefaultOrdered r, Csv.ToNamedRecord r) => Path b File ->  SE.CollectorConfig b -> Scraper b r -> IO ()
+runScraper :: Path b File -> SE.CollectorConfig b -> Scraper b -> IO ()
 runScraper outFile cfg scraper = do
   (sink, source, heartBeatThread) <- SE.setUpCollectorChan cfg
   collectorThread <- async $ SE.runCollectors cfg source >> cancel heartBeatThread
 
   (fileSink, fileSource) <- Chan.newChan
-  writerThread <- async $ writeCsv (Chan.readChan fileSource) outFile
+  writerThread <- async $ Chan.readChan fileSource >>= \(Item r) -> writeCsv outFile r
 
   Async.link2 collectorThread writerThread
   Async.link2 collectorThread heartBeatThread

@@ -7,12 +7,17 @@ import qualified Data.Text              as T
 import           ScrapeEngine.Prelude
 import           Text.HTML.Scalpel.Core
 
-import qualified ScrapeEngine as SE
+import ScrapingUtils
+
 
 data PageType = Sitemap | MemberListing
   deriving (Eq, Ord, Show)
 
-type PageScraper a = AppState -> Url -> IO Text -> IO a
+instance IsPageType PageType where
+  toScraper pageType = case pageType of
+    Sitemap       -> sitemapScraper
+    MemberListing -> memberListingScraper
+
 
 data BusinessData = BusinessData
   { catSearch       :: Maybe Text
@@ -35,11 +40,6 @@ instance Csv.ToNamedRecord BusinessData
 
 seedPages :: [(PageType, Url)]
 seedPages = [(Sitemap, Url "http://some-site.com/sitemap.xml")]
-
-scrapePage :: PageType -> PageScraper [(PageType, Url)]
-scrapePage pageType = case pageType of
-  Sitemap       -> sitemapScraper
-  MemberListing -> memberListingScraper
 
 sitemapScraper :: PageScraper [(PageType, Url)]
 sitemapScraper = scrapeForUrlsWith $
@@ -73,47 +73,3 @@ memberListingScraper = scrapeForRecordWith $ do
     text anySelector)
 
   return BusinessData{..}
-
-
-newtype AppState = AppState { _insertRecord :: BusinessData -> IO () }
-
-startScraper :: (BusinessData -> IO ()) -> SE.DownloadReqSink b -> IO ()
-startScraper insertRecord sink =
-  sink =<< forM seedPages (urlScraperReq (AppState insertRecord) sink)
-
-
-scrapeForRecordWith :: Scraper Text BusinessData -> AppState -> Url -> IO Text -> IO [(PageType, Url)]
-scrapeForRecordWith recordScraper AppState{_insertRecord} _ getPage = do
-  contents <- getPage
-  let eResult = scrapeStringLike contents recordScraper
-  whenJust eResult _insertRecord
-  pure []
-
-
-scrapeForUrlsWith :: Scraper Text [(PageType, Url)] -> AppState -> Url -> IO Text -> IO [(PageType, Url)]
-scrapeForUrlsWith scraper _ _ getPage = do
-  contents <- getPage
-  pure $ fromMaybe [] $ scrapeStringLike contents scraper
-
-
-urlScraperReq :: AppState -> SE.DownloadReqSink b -> (PageType, Url) -> IO (SE.DownloadReq b)
-urlScraperReq state sink (pageType, url_) = SE.urlScraperReq sink url_ (\getPage -> do
-    newPages <- scrapePage pageType state url_ getPage
-    forM newPages (urlScraperReq state sink)
-  )
-
-
-absUrl :: Url -> Url -> Url
-absUrl (Url base) r@(Url other)
-  | "http://" `T.isPrefixOf` otherNorm || "https://" `T.isPrefixOf` otherNorm = r
-  | otherwise = Url (T.dropWhileEnd (=='/') base <> "/" <> T.dropWhile (=='/') other)
-  where
-    otherNorm = T.toLower other
-
-
-atId :: String -> Selector
-atId id_ = AnyTag @: ["id" @= id_]
-
-attrSatisfies :: String -> (String -> Bool) -> AttributePredicate
-attrSatisfies attrName predicate = match
-  (\givenAttr val -> (givenAttr == attrName) && predicate val)
